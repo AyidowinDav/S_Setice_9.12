@@ -6,8 +6,8 @@ if (!isset($pdo) || $pdo === null) {
     die("Désolé, la connexion à la base de données n'est pas établie. Vérifiez config/db.php.");
 }
 
-$email = "ton-adresse@mail.com"; 
-$password = "TonMotDePasseSecret123"; 
+$email = "gloriaabatti60@gmail.com"; 
+$password = "Gloire2000"; 
 $nom = "Admin";
 $prenom = "Principal";
 
