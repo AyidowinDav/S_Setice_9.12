@@ -1,5 +1,6 @@
 <?php
 <<<<<<< HEAD
+<<<<<<< HEAD
 include 'config/db.php';
 
 try {
@@ -17,5 +18,13 @@ try {
 } catch (PDOException $e) {
     echo "Erreur de connexion : " . $e->getMessage();
 >>>>>>> 51bb5f3af26f3934429b676cf181c97ccfd8d42c
+=======
+include 'config/db.php';
+
+if ($pdo) {
+    echo "Connexion à la base de données réussie.";
+} else {
+    echo "Erreur de connexion à la base de données.";
+>>>>>>> e30197b71af36a9448a7c5ab054e44d81486b2a8
 }
 ?>
