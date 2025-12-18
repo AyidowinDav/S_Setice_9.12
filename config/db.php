@@ -1,6 +1,6 @@
 <?php
 $host = "localhost";
-$dbname = "nom_de_la_base";
+$dbname = "s_setice";
 $user = "root";
 $pass = "";
 
