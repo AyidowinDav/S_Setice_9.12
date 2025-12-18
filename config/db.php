@@ -1,25 +1,13 @@
 <?php
 $host = "localhost";
-$db   = "s_setice";
+$dbname = "s_setice";
 $user = "root";
-$pass = "";
+$pass = ""; // mot de passe MySQL (souvent vide en local)
 
 $pdo = null;
 try {
-    $dsn = "mysql:host=$host;dbname=$db";
+    $dsn = "pgsql:host=$host;port=$port;dbname=$db";
     $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 } catch (PDOException $e) {
-    echo "Erreur de connexion : " . $e->getMessage();
-}<?php
-$host = "localhost";
-$db   = "s_setice";
-$user = "root";
-$pass = "";
-
-$pdo = null;
-try {
-    $dsn = "mysql:host=$host;dbname=$db";
-    $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-} catch (PDOException $e) {
-    echo "Erreur de connexion : " . $e->getMessage();
+    die("Erreur de connexion : " . $e->getMessage());
 }
