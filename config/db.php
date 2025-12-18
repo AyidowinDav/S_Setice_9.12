@@ -1,13 +1,19 @@
 <?php
 $host = "localhost";
-$port = "5432";
-$db   = "s_setice";
-$user = "postgres";
-$pass = "2001"; 
+$dbname = "s_setice";
+$user = "root";
+$pass = ""; // mot de passe MySQL (souvent vide en local)
 
 try {
-    $dsn = "pgsql:host=$host;port=$port;dbname=$db";
-    $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $pdo = new PDO(
+        "mysql:host=$host;dbname=$dbname;charset=utf8",
+        $user,
+        $pass,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ]
+    );
 } catch (PDOException $e) {
-    echo "Erreur de connexion : " . $e->getMessage();
+    die("Erreur de connexion : " . $e->getMessage());
 }
