@@ -6,6 +6,17 @@ if (!isset($_SESSION['user_id'])) {
 }
 include '../config/db.php';
 
+// Fetch user details
+try {
+    $stmt = $pdo->prepare("SELECT prenom, nom FROM utilisateur WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user = $stmt->fetch();
+    $prenom = $user['prenom'];
+    $nom = $user['nom'];
+} catch (PDOException $e) {
+    $prenom = $nom = 'Erreur';
+}
+
 // Get statistics
 try {
     $stmt = $pdo->query("SELECT COUNT(*) as count FROM utilisateur");
@@ -34,7 +45,7 @@ try {
         <header>
             <h1>Dashboard Administrateur</h1>
             <div class="user-info">
-                <span>Bonjour, <?php echo htmlspecialchars($_SESSION['username']); ?></span>
+                <span>Bonjour, <?php echo htmlspecialchars($prenom . ' ' . $nom); ?></span>
                 <a href="../actions/logout.php" class="btn-logout">Déconnexion</a>
             </div>
         </header>
