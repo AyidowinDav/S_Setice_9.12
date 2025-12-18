@@ -15,9 +15,12 @@
             <div class="wrapper">
                 <form id="login-form" action="actions/auth_action.php" method="post">
                     <h1>Login</h1>
+                    <?php if (isset($_GET['error'])): ?>
+                        <p style="color: red; text-align: center;">Email ou mot de passe incorrect.</p>
+                    <?php endif; ?>
                     <div class="input-box">
-                        <input type="text" id="username" name="username" placeholder="" required>
-                        <label for="username">Username</label>
+                        <input type="email" id="username" name="username" placeholder="" required>
+                        <label for="username">Email</label>
                         <i class="uil uil-user-circle"></i>
                     </div>
                     <div class="input-box">
