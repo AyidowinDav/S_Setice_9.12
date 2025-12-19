@@ -11,6 +11,7 @@ require_once '../config/db.php';
 </head>
 <body>
 
+<?php
 // Traitement des actions
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -2,7 +2,7 @@
 $host = "localhost";
 $dbname = "s_setice";
 $user = "root";
-$pass = ""; // mot de passe MySQL (souvent vide en local)
+$pass = "";
 
 try {
     $pdo = new PDO(
