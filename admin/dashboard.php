@@ -59,7 +59,7 @@ try {
                 <div class="stat-card">
                     <h3>Espaces</h3>
                     <p><?php echo $espaces_count; ?></p>
-                    <a href="gestion_espaces.php">Gérer</a>
+                    <a href="gestion_espaces/index.php">Gérer</a>
                 </div>
                 <div class="stat-card">
                     <h3>Promotions</h3>

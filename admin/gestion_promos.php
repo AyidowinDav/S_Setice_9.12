@@ -1,13 +1,15 @@
 <?php
 session_start();
 require_once '../config/db.php';
-require_once '../includes/header.php';
-
-// Vérifier si l'utilisateur est connecté et est un admin ou directeur
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'directeur'])) {
-    header('Location: ../index.php');
-    exit();
-}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-SETICE - Gestion des Promotions</title>
+</head>
+<body>
 
 // Traitement des actions
 $message = '';
@@ -70,7 +72,7 @@ try {
     <header>
         <h1>Gestion des Promotions</h1>
         <div class="user-info">
-            <span>Connecté en tant que <?php echo htmlspecialchars($_SESSION['role']); ?></span>
+            <span>Connecté en tant que <?php echo isset($_SESSION['role']) ? htmlspecialchars($_SESSION['role']) : 'Utilisateur'; ?></span>
             <a href="../actions/logout.php" class="btn-logout">Déconnexion</a>
         </div>
     </header>

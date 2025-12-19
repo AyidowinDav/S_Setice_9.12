@@ -38,6 +38,42 @@ function insererEtudiantDansEspace($etudiant_id, $promotion_id, $espace_id) {
     }
 }
 
+// Fonction pour insérer un formateur dans un espace pédagogique
+function insererFormateurDansEspace($formateur_id, $espace_id) {
+    global $pdo;
+
+    try {
+        // Vérifier si l'utilisateur est un formateur
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM utilisateur WHERE id = ? AND role = 'FORMATEUR'");
+        $stmt->execute([$formateur_id]);
+        if ($stmt->fetchColumn() == 0) {
+            return "Erreur: L'utilisateur spécifié n'est pas un formateur.";
+        }
+
+        // Vérifier si l'espace pédagogique existe
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM espace_pedagogique WHERE id = ?");
+        $stmt->execute([$espace_id]);
+        if ($stmt->fetchColumn() == 0) {
+            return "Erreur: L'espace pédagogique spécifié n'existe pas.";
+        }
+
+        // Vérifier si le formateur n'est pas déjà dans l'espace
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM espace_enseignant WHERE id_espace = ? AND id_utilisateur = ?");
+        $stmt->execute([$espace_id, $formateur_id]);
+        if ($stmt->fetchColumn() > 0) {
+            return "Erreur: Le formateur est déjà assigné à cet espace pédagogique.";
+        }
+
+        // Insérer le formateur dans l'espace
+        $stmt = $pdo->prepare("INSERT INTO espace_enseignant (id_espace, id_utilisateur) VALUES (?, ?)");
+        $stmt->execute([$espace_id, $formateur_id]);
+
+        return "Succès: Le formateur a été inséré dans l'espace pédagogique.";
+    } catch (PDOException $e) {
+        return "Erreur de base de données: " . $e->getMessage();
+    }
+}
+
 // Exemple d'utilisation (pour test)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $etudiant_id = $_POST['etudiant_id'] ?? null;

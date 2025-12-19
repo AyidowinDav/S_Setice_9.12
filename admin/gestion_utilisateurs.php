@@ -175,6 +175,10 @@ try {
                 <p><?php echo count(array_filter($utilisateurs, function($u) { return $u['role'] === 'etudiant'; })); ?></p>
             </div>
             <div class="stat-card">
+                <h3>Formateurs</h3>
+                <p><?php echo count(array_filter($utilisateurs, function($u) { return $u['role'] === 'formateur'; })); ?></p>
+            </div>
+            <div class="stat-card">
                 <h3>Directeurs</h3>
                 <p><?php echo count(array_filter($utilisateurs, function($u) { return $u['role'] === 'directeur'; })); ?></p>
             </div>
@@ -209,6 +213,7 @@ try {
                     <select name="role" id="role" required onchange="toggleRoleFields()">
                         <option value="">Sélectionner un rôle</option>
                         <option value="etudiant">Étudiant</option>
+                        <option value="formateur">Formateur</option>
                         <option value="directeur">Directeur</option>
                     </select>
                     <label>Rôle</label>
@@ -329,6 +334,7 @@ try {
                     <div class="input-box">
                         <select name="role" id="editRole" required onchange="toggleEditRoleFields()">
                             <option value="etudiant">Étudiant</option>
+                            <option value="formateur">Formateur</option>
                             <option value="directeur">Directeur</option>
                         </select>
                         <label>Rôle</label>
@@ -489,6 +495,10 @@ function editUtilisateur(utilisateur) {
         document.getElementById('editEmbauche').value = utilisateur.date_embauche || '';
         document.getElementById('edit-etudiant-fields').style.display = 'none';
         document.getElementById('edit-directeur-fields').style.display = 'block';
+    } else {
+        // For formateur and any other roles, hide specific fields
+        document.getElementById('edit-etudiant-fields').style.display = 'none';
+        document.getElementById('edit-directeur-fields').style.display = 'none';
     }
 
     document.getElementById('editModal').style.display = 'block';
