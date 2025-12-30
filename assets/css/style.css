@@ -1,0 +1,149 @@
+:root {
+    --primary: #1a4a8e;
+    --bg-body: #f8f9fc;
+    --sidebar-white: #ffffff;
+    --text-grey: #6c757d;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8fafc;
+    color: #1e293b;
+}
+
+.main-wrapper {
+    display: flex;
+}
+
+/* SIDEBAR EXACTE */
+.sidebar {
+    width: 280px;
+    height: 100vh;
+    background: white;
+    border-right: 1px solid #e2e8f0;
+    position: fixed;
+    padding: 30px 20px;
+}
+
+.logo-section h2 {
+    color: #1a4a8e;
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 40px;
+}
+
+.sidebar-menu ul { list-style: none; }
+.sidebar-menu li { margin-bottom: 10px; }
+.sidebar-menu a {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    color: #64748b;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: 0.3s;
+}
+
+.sidebar-menu a i { margin-right: 15px; font-size: 18px; }
+.sidebar-menu a:hover, .sidebar-menu a.active {
+    background: #f1f5f9;
+    color: #1a4a8e;
+    font-weight: 600;
+}
+
+/* CONTENT AREA */
+.content-area {
+    margin-left: 280px;
+    padding: 50px;
+    width: 100%;
+}
+
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+.main-header h1 { font-size: 32px; font-weight: 700; color: #0f172a; }
+
+/* CARTES D'ACTIONS */
+.section-title { font-size: 20px; margin-bottom: 25px; color: #334155; }
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+    margin-bottom: 50px;
+}
+
+.action-card {
+    background: white;
+    padding: 40px 20px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border: 1px solid #f1f5f9;
+}
+
+.icon-wrapper {
+    width: 60px;
+    height: 60px;
+    background: #f8fafc;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    color: #94a3b8;
+    font-size: 20px;
+}
+
+.action-card h3 { font-size: 15px; margin-bottom: 20px; color: #1e293b; }
+
+.btn-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    padding: 8px 20px;
+    border-radius: 6px;
+    color: #475569;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+/* TABLEAU / LISTE */
+.management-table {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.table-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.btn-outline {
+    padding: 8px 25px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.btn-blue {
+    background: #3b82f6;
+    color: white;
+    border: none;
+}
