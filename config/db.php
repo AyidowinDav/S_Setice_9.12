@@ -1,6 +1,6 @@
 <?php
 $host = "localhost";
-$dbname = "s_setice";
+$dbname = "gasa_formation";
 $user = "root";
 $pass = "";
 
