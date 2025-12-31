@@ -100,21 +100,22 @@ INSERT INTO `etudiant_espace` (`id_etudiant`, `id_espace`) VALUES
 --
 
 DROP TABLE IF EXISTS `formateurs`;
-CREATE TABLE IF NOT EXISTS `formateurs` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `nom` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+
+CREATE TABLE `formateurs` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nom` VARCHAR(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` VARCHAR(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `mot_de_passe` VARCHAR(255) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 --
 -- Déchargement des données de la table `formateurs`
 --
 
-INSERT INTO `formateurs` (`id`, `nom`, `email`) VALUES
-(1, 'AGATA Alban', 'gloriaabatti60@gmail.com'),
-(2, 'DOSSOU Eliel', 'elieldossou13@gmail.com');
 
 -- --------------------------------------------------------
 
@@ -173,7 +174,7 @@ CREATE TABLE IF NOT EXISTS `utilisateur` (
 --
 
 INSERT INTO `utilisateur` (`id`, `nom`, `email`, `mot_de_passe`, `role`) VALUES
-(1, 'Gloria Abatti', 'gloriaabatti60@gmail.com', '$2y$10$7R8YyK.p/SStOqV.zFmY6u3rMvC8Pq9v7z1/z2z2z2z2z2z2z2z2z', 'DIRECTEUR');
+(1, 'Gloria Abatti', 'gloriaabatti60@gmail.com', '$2y$10$oiIU9cwAN0Q9Bo//L3Hmt.wUOQvBmmEKx6v9Vyg7aly8BdLWSpyu6', 'DIRECTEUR');
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
