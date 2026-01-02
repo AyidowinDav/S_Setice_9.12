@@ -1,18 +1,56 @@
 <?php
 session_start();
 require_once('../config/db.php');
+require_once('../includes/csrf.php'); // Protection CSRF
+require_once('../includes/messages.php'); // Gestion des messages
+
+// Paramètres de recherche et filtrage
+$search = trim($_GET['search'] ?? '');
+$promo_filter = intval($_GET['promo'] ?? 0);
+$page = max(1, intval($_GET['page'] ?? 1));
+$per_page = 10; // Nombre d'étudiants par page
 
 // On récupère les promotions pour le menu déroulant
 $promotions = $pdo->query("SELECT * FROM promotions ORDER BY nom ASC")->fetchAll();
 
-// On récupère les étudiants avec le nom de leur promotion
-$queryEtudiants = $pdo->query("
+// Construction de la requête avec filtres
+$where = [];
+$params = [];
+
+if (!empty($search)) {
+    $where[] = "(e.nom LIKE ? OR e.prenom LIKE ? OR e.email LIKE ?)";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+}
+
+if ($promo_filter > 0) {
+    $where[] = "e.id_promotion = ?";
+    $params[] = $promo_filter;
+}
+
+$where_clause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
+
+// Compter le total pour la pagination
+$count_query = "SELECT COUNT(*) FROM etudiants e $where_clause";
+$count_stmt = $pdo->prepare($count_query);
+$count_stmt->execute($params);
+$total_etudiants = $count_stmt->fetchColumn();
+$total_pages = ceil($total_etudiants / $per_page);
+
+// Récupérer les étudiants avec pagination
+$offset = ($page - 1) * $per_page;
+$query = "
     SELECT e.*, p.nom as promo_nom 
     FROM etudiants e 
     LEFT JOIN promotions p ON e.id_promotion = p.id 
+    $where_clause
     ORDER BY e.nom ASC
-");
-$etudiants = $queryEtudiants->fetchAll();
+    LIMIT $per_page OFFSET $offset
+";
+$query_stmt = $pdo->prepare($query);
+$query_stmt->execute($params);
+$etudiants = $query_stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -26,24 +64,47 @@ $etudiants = $queryEtudiants->fetchAll();
 <body style="margin:0; font-family:'Inter', sans-serif; background:#f8fafc;">
     <?php include('../includes/sidebar.php'); ?>
     <main style="margin-left: 280px; padding: 50px;">
+        <?php
+        $error = getError();
+        if ($error): ?>
+            <div class="alert-error" style="background: #fee; color: #c33; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #fcc;">
+                <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error); ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php
+        $success = getSuccess();
+        if ($success): ?>
+            <div class="alert-success" style="background: #efe; color: #363; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #cfc;">
+                <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?>
+            </div>
+        <?php endif; ?>
+        
         <header style="margin-bottom: 40px;">
-            <h1 style="font-size: 28px; font-weight: 800; color: #0f172a;">Gestion des Étudiants</h1>
-            <p style="color: #64748b;">Enregistrez et gérez les élèves.</p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1 style="font-size: 28px; font-weight: 800; color: #0f172a;">Gestion des Étudiants</h1>
+                    <p style="color: #64748b;">Enregistrez et gérez les élèves.</p>
+                </div>
+                <a href="../actions/export_action.php?table=etudiants&format=csv" class="btn-export" style="background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-download"></i> Exporter CSV
+                </a>
+            </div>
         </header>
 
         <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); max-width: 600px; border: 1px solid #edf2f7;">
             <form action="../actions/student_action.php" method="POST">
                 <div style="margin-bottom: 15px;">
                     <label style="display:block; margin-bottom:5px; font-weight:600;">Nom</label>
-                    <input type="text" name="nom" required style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px;">
+                    <input type="text" name="nom" placeholder="Entrez le nom de l'étudiant" required style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px;">
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label style="display:block; margin-bottom:5px; font-weight:600;">Prénom</label>
-                    <input type="text" name="prenom" required style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px;">
+                    <input type="text" name="prenom" placeholder="Entrez le prénom de l'étudiant" required style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px;">
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label style="display:block; margin-bottom:5px; font-weight:600;">Email</label>
-                    <input type="email" name="email" required style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px;">
+                    <input type="email" name="email" placeholder="exemple@domaine.com" required style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px;">
                 </div>
                 <div style="margin-bottom: 25px;">
                     <label style="display:block; margin-bottom:5px; font-weight:600;">Promotion</label>
@@ -54,7 +115,29 @@ $etudiants = $queryEtudiants->fetchAll();
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
                 <button type="submit" style="background:#1a4a8e; color:white; border:none; padding:15px; border-radius:12px; cursor:pointer; font-weight:600; width:100%;">Enregistrer l'étudiant</button>
+            </form>
+        </div>
+
+        <!-- Recherche et Filtrage -->
+        <div style="background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid #edf2f7; margin-top: 30px;">
+            <form method="GET" style="display: flex; gap: 15px; align-items: end;">
+                <div style="flex: 1;">
+                    <label style="display:block; margin-bottom:5px; font-weight:600; color:#475569;">Rechercher</label>
+                    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Nom, prénom ou email..." style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="display:block; margin-bottom:5px; font-weight:600; color:#475569;">Promotion</label>
+                    <select name="promo" style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; background:white;">
+                        <option value="0">Toutes les promotions</option>
+                        <?php foreach($promotions as $p): ?>
+                            <option value="<?= $p['id'] ?>" <?= ($promo_filter == $p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nom']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <button type="submit" style="background:#1a4a8e; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600;">Filtrer</button>
+                <a href="etudiants.php" style="background:#6b7280; color:white; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600;">Réinitialiser</a>
             </form>
         </div>
 
@@ -74,13 +157,79 @@ $etudiants = $queryEtudiants->fetchAll();
                         <td style="padding: 20px; color: #1a4a8e; font-weight: 600;"><?= htmlspecialchars($e['promo_nom'] ?? 'Non assigné') ?></td>
                         <td style="padding: 20px; text-align: center;">
                             <a href="edit_etudiant.php?id=<?= $e['id'] ?>" style="color: #1a4a8e; margin-right: 15px;"><i class="fas fa-edit"></i></a>
-                            <a href="../actions/delete_action.php?type=etudiant&id=<?= $e['id'] ?>" onclick="return confirm('Supprimer cet étudiant ?')" style="color: #ef4444;"><i class="fas fa-trash"></i></a>
+                            <a href="../actions/delete_action.php?type=etudiant&id=<?= $e['id'] ?>&csrf_token=<?= generateCsrfToken() ?>" onclick="return confirm('Supprimer cet étudiant ?')" style="color: #ef4444;"><i class="fas fa-trash"></i></a>
                         </td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
+
+            <!-- Pagination -->
+            <?php if ($total_pages > 1): ?>
+            <div style="padding: 20px; text-align: center; border-top: 1px solid #edf2f7;">
+                <?php
+                $query_string = http_build_query(array_filter(['search' => $search, 'promo' => $promo_filter]));
+                $base_url = '?' . ($query_string ? $query_string . '&' : '');
+                ?>
+                <?php if ($page > 1): ?>
+                    <a href="<?= $base_url ?>page=<?= $page - 1 ?>" style="background:#e2e8f0; color:#475569; padding:8px 12px; border-radius:6px; text-decoration:none; margin:0 5px;">Précédent</a>
+                <?php endif; ?>
+                
+                <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
+                    <a href="<?= $base_url ?>page=<?= $i ?>" style="background:<?= $i == $page ? '#1a4a8e' : '#e2e8f0' ?>; color:<?= $i == $page ? 'white' : '#475569' ?>; padding:8px 12px; border-radius:6px; text-decoration:none; margin:0 2px;"><?= $i ?></a>
+                <?php endfor; ?>
+                
+                <?php if ($page < $total_pages): ?>
+                    <a href="<?= $base_url ?>page=<?= $page + 1 ?>" style="background:#e2e8f0; color:#475569; padding:8px 12px; border-radius:6px; text-decoration:none; margin:0 5px;">Suivant</a>
+                <?php endif; ?>
+                
+                <span style="margin-left: 20px; color: #64748b;">Page <?= $page ?> sur <?= $total_pages ?> (<?= $total_etudiants ?> étudiants)</span>
+            </div>
+            <?php endif; ?>
+
         </div>
     </main>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form[action="../actions/student_action.php"]');
+        
+        form.addEventListener('submit', function(e) {
+            const nom = form.querySelector('input[name="nom"]').value.trim();
+            const prenom = form.querySelector('input[name="prenom"]').value.trim();
+            const email = form.querySelector('input[name="email"]').value.trim();
+            const promotion = form.querySelector('select[name="promotion"]').value;
+            
+            // Validation du nom
+            if (nom.length < 2) {
+                alert('Le nom doit contenir au moins 2 caractères.');
+                e.preventDefault();
+                return;
+            }
+            
+            // Validation du prénom
+            if (prenom.length < 2) {
+                alert('Le prénom doit contenir au moins 2 caractères.');
+                e.preventDefault();
+                return;
+            }
+            
+            // Validation de l'email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('Veuillez entrer une adresse email valide.');
+                e.preventDefault();
+                return;
+            }
+            
+            // Validation de la promotion
+            if (!promotion) {
+                alert('Veuillez sélectionner une promotion.');
+                e.preventDefault();
+                return;
+            }
+        });
+    });
+    </script>
 </body>
 </html>

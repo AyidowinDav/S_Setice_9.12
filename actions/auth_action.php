@@ -1,34 +1,40 @@
 <?php
 session_start();
-include '../config/db.php';
+require_once '../config/db.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['username']);
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $email = trim($_POST['email']);
     $password = $_POST['password'];
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        header('Location: ../index.php?error=1');
-        exit;
-    }
+    $stmt = $pdo->prepare("SELECT * FROM utilisateur WHERE email = ?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
 
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM utilisateur WHERE email = ?");
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
+    if ($user && password_verify($password, $user['mot_de_passe'])) {
 
-        if ($user && password_verify($password, $user['mot_de_passe'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['email'];
-            header('Location: ../views/dashboard.php');
-            exit;
-        } else {
-            header('Location: ../index.php?error=1');
+        if ($user['is_active'] == 0) {
+            header('Location: ../index.php?error=not_active');
             exit;
         }
-    } catch (Exception $e) {
-        // Tu peux loguer l’erreur dans un fichier, mais ne pas l’afficher à l’utilisateur
+
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['role']   = strtoupper(trim($user['role'])); // Nettoie et met en majuscules
+        $_SESSION['nom']    = $user['nom'];
+
+        if ($_SESSION['role'] === 'DIRECTEUR' || $_SESSION['role'] === 'ADMIN') {
+            header('Location: ../views/dashboard.php');
+        } elseif ($_SESSION['role'] === 'FORMATEUR') {
+            header('Location: ../views/formateur_dashboard.php');
+        } elseif ($_SESSION['role'] === 'ETUDIANT') {
+            header('Location: ../views/etudiant_dashboard.php');
+        } else {
+            // Si le rôle est bizarre, on détruit la session et on renvoie à l'accueil
+            session_destroy();
+            header('Location: ../index.php?error=role_inconnu');
+        }
+        exit;
+    } else {
         header('Location: ../index.php?error=1');
         exit;
     }
 }
-?>

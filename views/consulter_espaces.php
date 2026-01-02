@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once('../config/db.php');
+require_once('../includes/csrf.php'); // Protection CSRF
+require_once('../includes/messages.php'); // Gestion des messages
 
 $sql = "SELECT 
             e.id, 
@@ -34,6 +36,18 @@ $espaces = $pdo->query($sql)->fetchAll();
             </div>
         </header>
 
+        <?php $error = getError(); if ($error): ?>
+            <div style="background: #fee; color: #c33; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #fcc;">
+                <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error); ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php $success = getSuccess(); if ($success): ?>
+            <div style="background: #efe; color: #363; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #cfc;">
+                <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?>
+            </div>
+        <?php endif; ?>
+
         <div style="background: white; border-radius: 20px; border: 1px solid #edf2f7; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
             <table style="width: 100%; border-collapse: collapse; text-align: left;">
                 <thead>
@@ -62,7 +76,7 @@ $espaces = $pdo->query($sql)->fetchAll();
                         </td>
                         <td style="padding: 20px; text-align: center;">
                             <a href="edit_espace.php?id=<?= $espace['id'] ?>" style="color: #64748b; margin-right: 15px;"><i class="fas fa-cog"></i></a>
-                            <a href="../actions/delete_action.php?type=espace&id=<?= $espace['id'] ?>" onclick="return confirm('Supprimer cet espace ?')" style="color: #ef4444;"><i class="fas fa-trash"></i></a>
+                            <a href="../actions/delete_action.php?type=espace&id=<?= $espace['id'] ?>&csrf_token=<?= generateCsrfToken() ?>" onclick="return confirm('Supprimer cet espace ?')" style="color: #ef4444;"><i class="fas fa-trash"></i></a>
                         </td>
                     </tr>
                     <?php endforeach; ?>

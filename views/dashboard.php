@@ -1,6 +1,29 @@
-<?php 
+<?php
+session_start(); // INDISPENSABLE : Toujours en première ligne !
+
+// 1. Protection : On vérifie si l'utilisateur est connecté
+if (!isset($_SESSION['role'])) {
+    header('Location: ../index.php');
+    exit;
+}
+
+// 2. Protection : Redirection vers le bon dashboard si ce n'est pas un admin/directeur
+$role = $_SESSION['role'];
+if ($role !== 'DIRECTEUR' && $role !== 'ADMIN') {
+    if ($role === 'ETUDIANT') {
+        header('Location: etudiant_dashboard.php');
+    } elseif ($role === 'FORMATEUR') {
+        header('Location: formateur_dashboard.php');
+    } else {
+        header('Location: ../index.php');
+    }
+    exit;
+}
+
+// 3. Si on arrive ici, c'est que c'est un DIRECTEUR ou ADMIN
 require_once('../config/db.php');
-// Récupération des statistiques réelles
+
+// Récupération des statistiques
 $countEtu = $pdo->query("SELECT COUNT(*) FROM etudiants")->fetchColumn();
 $countProf = $pdo->query("SELECT COUNT(*) FROM formateurs")->fetchColumn();
 $countPromo = $pdo->query("SELECT COUNT(*) FROM promotions")->fetchColumn();
@@ -18,6 +41,7 @@ $countEspaces = $pdo->query("SELECT COUNT(*) FROM espaces_pedagogiques")->fetchC
 </head>
 <body style="margin:0; font-family:'Inter', sans-serif; background:#f8fafc;">
     <?php include('../includes/sidebar.php'); ?>
+    
     <main style="margin-left: 280px; padding: 50px;">
         <h1 style="font-weight: 800; color: #0f172a; margin-bottom:40px;">Statistiques Globales</h1>
 

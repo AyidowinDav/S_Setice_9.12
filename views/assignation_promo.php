@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once('../config/db.php');
+require_once('../includes/csrf.php'); // Protection CSRF
+require_once('../includes/messages.php'); // Gestion des messages
 
 // On récupère les données pour les menus déroulants
 $promotions = $pdo->query("SELECT * FROM promotions ORDER BY nom ASC")->fetchAll();
@@ -25,9 +27,22 @@ $espaces = $pdo->query("SELECT * FROM espaces_pedagogiques ORDER BY nom_espace A
             <p style="color: #64748b;">Liez une promotion entière à un espace de cours.</p>
         </header>
 
+        <?php $error = getError(); if ($error): ?>
+            <div style="background: #fee; color: #c33; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #fcc;">
+                <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error); ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php $success = getSuccess(); if ($success): ?>
+            <div style="background: #efe; color: #363; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #cfc;">
+                <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?>
+            </div>
+        <?php endif; ?>
+
         <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); max-width: 600px; border: 1px solid #edf2f7;">
             <form action="../actions/pedagogique_action.php" method="POST">
                 <input type="hidden" name="type_action" value="assigner_promo">
+                <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
 
                 <div style="margin-bottom: 25px;">
                     <label style="display:block; margin-bottom:10px; font-weight:600; color:#475569;">Sélectionner la Promotion</label>

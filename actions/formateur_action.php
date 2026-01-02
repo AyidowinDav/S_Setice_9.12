@@ -1,57 +1,56 @@
 <?php
-session_start();
-require_once('../config/db.php');
-require_once('../includes/mailer.php');
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require '../includes/PHPMailer/Exception.php';
+require '../includes/PHPMailer/PHPMailer.php';
+require '../includes/PHPMailer/SMTP.php';
+require_once '../config/db.php';
+require_once '../includes/mailer_config.php'; // On inclut la configuration centralisée
+require_once '../includes/csrf.php'; // Protection CSRF
+require_once '../includes/messages.php'; // Gestion des messages
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    $nom   = trim($_POST['nom']);
+    // Vérifier le token CSRF
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        die('Token CSRF invalide. Rechargez la page et réessayez.');
+    }
+    $nom = trim($_POST['nom']);
     $email = trim($_POST['email']);
+    $token = bin2hex(random_bytes(32));
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        echo "<script>alert('Email invalide'); history.back();</script>";
-        exit;
+    try {
+        $pdo->beginTransaction();
+
+        $stmtUser = $pdo->prepare("INSERT INTO utilisateur (nom, email, role, activation_token, is_active) VALUES (?, ?, 'FORMATEUR', ?, 0)");
+        $stmtUser->execute([$nom, $email, $token]);
+        $id_utilisateur = $pdo->lastInsertId();
+
+        $stmtProf = $pdo->prepare("INSERT INTO formateurs (nom, email, id_utilisateur) VALUES (?, ?, ?)");
+        $stmtProf->execute([$nom, $email, $id_utilisateur]);
+
+        $pdo->commit();
+
+        // Utilisation de la fonction centralisée
+        $lien = "http://localhost/S-SETICE_9.1/views/activation.php?token=$token";
+        
+        $mail = getMailer(); // Appel de la fonction de mailer_config.php
+        $mail->addAddress($email);
+        $mail->isHTML(true);
+        $mail->Subject = 'Creation de votre compte Formateur S-SETICE';
+        $mail->Body    = "
+            <h2>Bienvenue M./Mme $nom</h2>
+            <p>Votre accès formateur a été créé. Veuillez activer votre compte en cliquant ici :</p>
+            <p><a href='$lien' style='padding:10px; background:#1a4a8e; color:white; text-decoration:none;'>Activer mon espace formateur</a></p>
+        ";
+
+        $mail->send();
+        setSuccess('Compte formateur créé. Email d\'activation envoyé.');
+        header('Location: ../views/formateurs.php');
+
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        setError('Erreur lors de la création : ' . $e->getMessage());
+        header('Location: ../views/formateurs.php');
     }
-
-    // Vérification unicité
-    $check = $pdo->prepare("SELECT id FROM formateurs WHERE email = ?");
-    $check->execute([$email]);
-
-    if ($check->rowCount() > 0) {
-        echo "<script>alert('Ce formateur existe déjà'); history.back();</script>";
-        exit;
-    }
-
-    // Génération mot de passe
-    $password_clair = substr(str_shuffle('abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'), 0, 8);
-    $password_hash = password_hash($password_clair, PASSWORD_DEFAULT);
-
-    // Insertion
-    $insert = $pdo->prepare("
-        INSERT INTO formateurs (nom, email, password, created_at)
-        VALUES (?, ?, ?, NOW())
-    ");
-    $insert->execute([$nom, $email, $password_hash]);
-
-    // Envoi mail
-    sendMail(
-        $email,
-        'Compte formateur S-SETICE',
-        "Bonjour $nom,
-
-Votre compte formateur a été créé avec succès.
-
-Identifiants de connexion :
-Email : $email
-Mot de passe : $password_clair
-
-Merci de modifier votre mot de passe après connexion.
-
-— Administration S-SETICE"
-    );
-
-    echo "<script>
-        alert('Formateur créé avec succès et email envoyé.');
-        window.location.href='../views/dashboard.php';
-    </script>";
 }

@@ -1,8 +1,16 @@
 <?php
 session_start();
 require_once('../config/db.php');
+require_once('../includes/csrf.php'); // Protection CSRF
+require_once('../includes/messages.php'); // Gestion des messages
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type_action'])) {
+    // Vérifier le token CSRF
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        setError('Token CSRF invalide. Rechargez la page et réessayez.');
+        header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '../index.php'));
+        exit;
+    }
     $type = $_POST['type_action'];
 
     try {
@@ -18,8 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type_action'])) {
             $check->execute([$id_p, $id_e]);
 
             if ($check->fetchColumn() > 0) {
-                echo "<script>alert('Erreur : Cette promotion est déjà assignée à cet espace pédagogique.'); window.history.back();</script>";
-                exit();
+                setError('Erreur : Cette promotion est déjà assignée à cet espace pédagogique.');
+                header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '../views/consulter_espaces.php'));
+                exit;
             }
 
             // 2. Récupérer TOUS les étudiants de cette promotion
@@ -28,8 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type_action'])) {
             $etudiants = $stmtEtu->fetchAll();
 
             if (empty($etudiants)) {
-                echo "<script>alert('Erreur : Cette promotion ne contient aucun étudiant.'); window.history.back();</script>";
-                exit();
+                setError('Erreur : Cette promotion ne contient aucun étudiant.');
+                header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '../views/consulter_espaces.php'));
+                exit;
             }
 
             // 3. Insérer les étudiants dans la table de liaison
@@ -41,10 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type_action'])) {
             }
             $pdo->commit();
 
-            echo "<script>alert('Promotion assignée avec succès ! " . count($etudiants) . " étudiants ajoutés.'); window.location.href='../views/consulter_espaces.php';</script>";
+            setSuccess('Promotion assignée avec succès ! ' . count($etudiants) . ' étudiants ajoutés.');
+            header('Location: ../views/consulter_espaces.php');
+            exit;
         }
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        die("Erreur : " . $e->getMessage());
+        setError('Erreur : ' . $e->getMessage());
+        header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '../views/consulter_espaces.php'));
+        exit;
     }
 }

@@ -1,30 +1,54 @@
 <?php
-session_start();
-require_once('../config/db.php');
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require '../includes/PHPMailer/Exception.php';
+require '../includes/PHPMailer/PHPMailer.php';
+require '../includes/PHPMailer/SMTP.php';
+require_once '../config/db.php';
+require_once '../includes/mailer_config.php'; // On inclut la configuration centralisée
+require_once '../includes/csrf.php'; // Protection CSRF
+require_once '../includes/messages.php'; // Gestion des messages
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nom = trim($_POST['nom']);
-    $prenom = trim($_POST['prenom']);
-    $email = trim($_POST['email']);
+    // Vérifier le token CSRF
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        die('Token CSRF invalide. Rechargez la page et réessayez.');
+    }
+    $nom = $_POST['nom'];
+    $prenom = $_POST['prenom'];
+    $email = $_POST['email'];
     $id_promotion = $_POST['id_promotion'];
+    $token = bin2hex(random_bytes(32));
 
-    // 1. Vérifier si l'étudiant existe déjà (par email) - Critère US 2.3
-    $check = $pdo->prepare("SELECT id FROM etudiants WHERE email = ?");
-    $check->execute([$email]);
+    try {
+        $pdo->beginTransaction(); 
 
-    if ($check->rowCount() > 0) {
-        // Cas Défavorable
-        echo "<script>alert('Erreur : Un étudiant avec cet email existe déjà.'); window.history.back();</script>";
-    } else {
-        // 2. Insertion dans la base de données - Cas Favorable
-        try {
-            $insert = $pdo->prepare("INSERT INTO etudiants (nom, prenom, email, id_promotion) VALUES (?, ?, ?, ?)");
-            $insert->execute([$nom, $prenom, $email, $id_promotion]);
-            
-            // Redirection vers le dashboard avec succès
-            echo "<script>alert('Étudiant ajouté avec succès et assigné à sa promotion !'); window.location.href='../views/dashboard.php';</script>";
-        } catch (PDOException $e) {
-            echo "Erreur lors de l'insertion : " . $e->getMessage();
-        }
+        $stmtUser = $pdo->prepare("INSERT INTO utilisateur (nom, email, role, activation_token, is_active) VALUES (?, ?, 'ETUDIANT', ?, 0)");
+        $stmtUser->execute([$nom, $email, $token]);
+        $id_utilisateur = $pdo->lastInsertId(); 
+
+        $stmtStudent = $pdo->prepare("INSERT INTO etudiants (nom, prenom, email, id_promotion, id_utilisateur) VALUES (?, ?, ?, ?, ?)");
+        $stmtStudent->execute([$nom, $prenom, $email, $id_promotion, $id_utilisateur]);
+
+        $pdo->commit(); 
+
+        // Utilisation de la fonction centralisée
+        $lien = "http://localhost/S-SETICE_9.1/views/activation.php?token=$token";
+        
+        $mail = getMailer(); // Appel de la fonction de mailer_config.php
+        $mail->addAddress($email);
+        $mail->isHTML(true);
+        $mail->Subject = 'Activation de votre compte S-SETICE';
+        $mail->Body    = "Bonjour $nom, cliquez ici pour activer votre compte : <a href='$lien'>Activer mon compte</a>";
+
+        $mail->send();
+        setSuccess('Étudiant créé avec succès. Email d\'activation envoyé.');
+        header('Location: ../views/etudiants.php');
+
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        setError('Erreur lors de la création : ' . $e->getMessage());
+        header('Location: ../views/etudiants.php');
     }
 }
