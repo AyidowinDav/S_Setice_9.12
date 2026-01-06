@@ -1,8 +1,16 @@
 <?php
+session_start();
 require_once '../config/db.php';
 require_once '../includes/messages.php';
 
+/**
+ * EXPORT DE DONNÉES
+ * Export en CSV ou JSON des différentes tables
+ */
+
+// Vérification autorisation
 if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['DIRECTEUR', 'ADMIN'])) {
+    setError('Accès non autorisé.');
     header('Location: ../index.php');
     exit;
 }
@@ -10,7 +18,19 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['DIRECTEUR', 'ADM
 $table = $_GET['table'] ?? '';
 $format = $_GET['format'] ?? 'csv';
 
-$allowed_tables = ['utilisateur', 'etudiants', 'formateurs', 'promotions', 'espaces_pedagogiques', 'etudiant_espace', 'promotion_espace', 'travaux'];
+// Tables autorisées à l'export
+$allowed_tables = [
+    'utilisateur', 
+    'etudiants', 
+    'formateurs', 
+    'promotions', 
+    'espaces_pedagogiques', 
+    'etudiant_espace', 
+    'travaux',
+    'assignations_travaux',
+    'rendus_travaux',
+    'evaluations'
+];
 
 if (!in_array($table, $allowed_tables)) {
     die('Table non autorisée');
@@ -32,15 +52,19 @@ try {
 
         $output = fopen('php://output', 'w');
 
+        // BOM UTF-8 pour Excel
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
         // En-têtes
-        fputcsv($output, array_keys($data[0]));
+        fputcsv($output, array_keys($data[0]), ';');
 
         // Données
         foreach ($data as $row) {
-            fputcsv($output, $row);
+            fputcsv($output, $row, ';');
         }
 
         fclose($output);
+        
     } elseif ($format === 'json') {
         header('Content-Type: application/json; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $filename . '.json"');
@@ -49,6 +73,7 @@ try {
     }
 
 } catch (PDOException $e) {
+    error_log('Erreur export : ' . $e->getMessage());
     die('Erreur lors de l\'export : ' . $e->getMessage());
 }
 ?>
