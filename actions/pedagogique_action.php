@@ -88,17 +88,14 @@ try {
             exit;
         }
 
-        // CAS DÉFAVORABLE : Vérifier si promotion déjà assignée
-        $check = $pdo->prepare("
-            SELECT COUNT(*) as nb
-            FROM etudiant_espace ee
-            JOIN etudiants e ON ee.id_etudiant = e.id
-            WHERE e.id_promotion = ? AND ee.id_espace = ?
+        // CAS DÉFAVORABLE : Vérifier si promotion déjà assignée à cet espace
+        $checkPromoEspace = $pdo->prepare("
+            SELECT * FROM promotion_espace
+            WHERE id_promotion = ? AND id_espace = ?
         ");
-        $check->execute([$id_promotion, $id_espace]);
-        $result = $check->fetch();
+        $checkPromoEspace->execute([$id_promotion, $id_espace]);
 
-        if ($result['nb'] > 0) {
+        if ($checkPromoEspace->rowCount() > 0) {
             setError('Erreur : Cette promotion est déjà assignée à cet espace pédagogique.');
             header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '../views/consulter_espaces.php'));
             exit;
@@ -109,22 +106,39 @@ try {
         $stmtEtu->execute([$id_promotion]);
         $etudiants = $stmtEtu->fetchAll();
 
-        if (empty($etudiants)) {
-            setError('Erreur : Cette promotion ne contient aucun étudiant.');
-            header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? '../views/consulter_espaces.php'));
-            exit;
-        }
-
-        // CAS FAVORABLE : Insérer les étudiants
-        $insert = $pdo->prepare("INSERT INTO etudiant_espace (id_etudiant, id_espace) VALUES (?, ?)");
-        
+        // CAS FAVORABLE : Transaction pour assigner la promotion et les étudiants existants
         $pdo->beginTransaction();
-        foreach ($etudiants as $etu) {
-            $insert->execute([$etu['id'], $id_espace]);
-        }
-        $pdo->commit();
 
-        setSuccess('Promotion assignée avec succès ! ' . count($etudiants) . ' étudiant(s) ajouté(s).');
+        try {
+            // 1. Créer le lien promotion-espace pour les futurs étudiants
+            $insertPromoEspace = $pdo->prepare("
+                INSERT INTO promotion_espace (id_promotion, id_espace)
+                VALUES (?, ?)
+            ");
+            $insertPromoEspace->execute([$id_promotion, $id_espace]);
+
+            // 2. Assigner tous les étudiants existants de cette promotion à l'espace
+            if (!empty($etudiants)) {
+                $insertEtudiantEspace = $pdo->prepare("
+                    INSERT INTO etudiant_espace (id_etudiant, id_espace)
+                    VALUES (?, ?)
+                ");
+
+                foreach ($etudiants as $etu) {
+                    $insertEtudiantEspace->execute([$etu['id'], $id_espace]);
+                }
+            }
+
+            $pdo->commit();
+
+            $studentCount = count($etudiants);
+            setSuccess('Promotion assignée avec succès à l\'espace ! ' . $studentCount . ' étudiant(s) existant(s) ajouté(s). Les futurs étudiants de cette promotion seront automatiquement assignés.');
+
+        } catch (PDOException $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
         header('Location: ../views/consulter_espaces.php');
         exit;
     }

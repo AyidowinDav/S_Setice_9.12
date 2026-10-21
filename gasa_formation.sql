@@ -174,18 +174,7 @@ CREATE TABLE IF NOT EXISTS `evaluations` (
 INSERT INTO `evaluations` (`id`, `id_rendu`, `note`, `commentaire`, `date_evaluation`, `id_formateur`) VALUES
 (1, 1, 12.50, 'Excellent travail', '2026-01-05 18:43:30', 8);
 
---
--- Déclencheurs `evaluations`
---
-DROP TRIGGER IF EXISTS `update_statut_evaluation`;
-DELIMITER $$
-CREATE TRIGGER `update_statut_evaluation` AFTER INSERT ON `evaluations` FOR EACH ROW BEGIN
-    UPDATE assignations_travaux at
-    JOIN rendus_travaux rt ON at.id = rt.id_assignation
-    SET at.statut = 'EVALUE' WHERE rt.id = NEW.id_rendu;
-END
-$$
-DELIMITER ;
+
 
 -- --------------------------------------------------------
 
@@ -341,30 +330,7 @@ CREATE TABLE IF NOT EXISTS `rendus_travaux` (
 INSERT INTO `rendus_travaux` (`id`, `id_assignation`, `contenu`, `fichier_url`, `date_rendu`, `est_en_retard`) VALUES
 (1, 4, 'Un projet est un ensemble d’actions organisées et planifiées visant à atteindre un objectif précis dans un délai donné, en mobilisant des ressources humaines, matérielles et financières, tout en respectant des contraintes définies afin de produire un résultat concret et mesurable.', NULL, '2026-01-05 18:17:25', 0);
 
---
--- Déclencheurs `rendus_travaux`
---
-DROP TRIGGER IF EXISTS `check_retard_after_rendu`;
-DELIMITER $$
-CREATE TRIGGER `check_retard_after_rendu` BEFORE INSERT ON `rendus_travaux` FOR EACH ROW BEGIN
-    DECLARE date_lim DATETIME;
-    SELECT t.date_limite INTO date_lim FROM assignations_travaux at 
-    JOIN travaux t ON at.id_travail = t.id WHERE at.id = NEW.id_assignation;
-    
-    IF NEW.date_rendu > date_lim THEN
-        SET NEW.est_en_retard = TRUE;
-    END IF;
-END
-$$
-DELIMITER ;
-DROP TRIGGER IF EXISTS `update_statut_rendu`;
-DELIMITER $$
-CREATE TRIGGER `update_statut_rendu` AFTER INSERT ON `rendus_travaux` FOR EACH ROW BEGIN
-    UPDATE assignations_travaux SET statut = IF(NEW.est_en_retard, 'EN_RETARD', 'RENDU')
-    WHERE id = NEW.id_assignation;
-END
-$$
-DELIMITER ;
+
 
 -- --------------------------------------------------------
 
@@ -429,69 +395,7 @@ INSERT INTO `utilisateur` (`id`, `nom`, `email`, `mot_de_passe`, `role`, `activa
 (10, 'AYIDOWIN David', 'alikondavidayidowin@gmail.com', '$2y$10$/Rf1ogX9b.mjifWsO7iHn.cwfS7qrX6E9lz7oTkoCg2NrlCYSTh46', 'FORMATEUR', NULL, 1),
 (12, 'ALIKON David', 'lbosadavidayi@gmail.com', '$2y$10$1zFnF2jIH8Qb6wM5im4JRu.kJpM.5sV5OpOCwk8mzj/WddTcivPcq', 'ETUDIANT', NULL, 1);
 
--- --------------------------------------------------------
 
---
--- Doublure de structure pour la vue `v_notes_etudiants`
--- (Voir ci-dessous la vue réelle)
---
-DROP VIEW IF EXISTS `v_notes_etudiants`;
-CREATE TABLE IF NOT EXISTS `v_notes_etudiants` (
-`etudiant_id` int
-,`nom` varchar(100)
-,`prenom` varchar(100)
-,`promotion_nom` varchar(100)
-,`note` decimal(4,2)
-,`travail_titre` varchar(255)
-,`nom_espace` varchar(100)
-);
-
--- --------------------------------------------------------
-
---
--- Doublure de structure pour la vue `v_travaux_stats`
--- (Voir ci-dessous la vue réelle)
---
-DROP VIEW IF EXISTS `v_travaux_stats`;
-CREATE TABLE IF NOT EXISTS `v_travaux_stats` (
-`id` int
-,`titre` varchar(255)
-,`description` text
-,`date_limite` datetime
-,`date_creation` datetime
-,`type_travail` enum('INDIVIDUEL','COLLECTIF')
-,`id_formateur` int
-,`id_espace` int
-,`id_promotion` int
-,`id_etudiant` int
-,`formateur_nom` varchar(100)
-,`nom_espace` varchar(100)
-,`promotion_nom` varchar(100)
-,`nb_assignations` bigint
-,`nb_rendus` bigint
-,`nb_evalues` bigint
-,`moyenne_notes` decimal(5,2)
-);
-
--- --------------------------------------------------------
-
---
--- Structure de la vue `v_notes_etudiants`
---
-DROP TABLE IF EXISTS `v_notes_etudiants`;
-
-DROP VIEW IF EXISTS `v_notes_etudiants`;
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_notes_etudiants`  AS SELECT `et`.`id` AS `etudiant_id`, `et`.`nom` AS `nom`, `et`.`prenom` AS `prenom`, `p`.`nom` AS `promotion_nom`, `ev`.`note` AS `note`, `t`.`titre` AS `travail_titre`, `esp`.`nom_espace` AS `nom_espace` FROM ((((((`etudiants` `et` join `promotions` `p` on((`et`.`id_promotion` = `p`.`id`))) join `assignations_travaux` `at` on((`et`.`id` = `at`.`id_etudiant`))) join `rendus_travaux` `rt` on((`at`.`id` = `rt`.`id_assignation`))) join `evaluations` `ev` on((`rt`.`id` = `ev`.`id_rendu`))) join `travaux` `t` on((`at`.`id_travail` = `t`.`id`))) join `espaces_pedagogiques` `esp` on((`t`.`id_espace` = `esp`.`id`))) ;
-
--- --------------------------------------------------------
-
---
--- Structure de la vue `v_travaux_stats`
---
-DROP TABLE IF EXISTS `v_travaux_stats`;
-
-DROP VIEW IF EXISTS `v_travaux_stats`;
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_travaux_stats`  AS SELECT `t`.`id` AS `id`, `t`.`titre` AS `titre`, `t`.`description` AS `description`, `t`.`date_limite` AS `date_limite`, `t`.`date_creation` AS `date_creation`, `t`.`type_travail` AS `type_travail`, `t`.`id_formateur` AS `id_formateur`, `t`.`id_espace` AS `id_espace`, `t`.`id_promotion` AS `id_promotion`, `t`.`id_etudiant` AS `id_etudiant`, `f`.`nom` AS `formateur_nom`, `e`.`nom_espace` AS `nom_espace`, `p`.`nom` AS `promotion_nom`, count(distinct `at`.`id`) AS `nb_assignations`, count(distinct `rt`.`id`) AS `nb_rendus`, count(distinct `ev`.`id`) AS `nb_evalues`, round(avg(`ev`.`note`),2) AS `moyenne_notes` FROM ((((((`travaux` `t` left join `formateurs` `f` on((`t`.`id_formateur` = `f`.`id`))) left join `espaces_pedagogiques` `e` on((`t`.`id_espace` = `e`.`id`))) left join `promotions` `p` on((`t`.`id_promotion` = `p`.`id`))) left join `assignations_travaux` `at` on((`t`.`id` = `at`.`id_travail`))) left join `rendus_travaux` `rt` on((`at`.`id` = `rt`.`id_assignation`))) left join `evaluations` `ev` on((`rt`.`id` = `ev`.`id_rendu`))) GROUP BY `t`.`id` ;
 
 --
 -- Contraintes pour les tables déchargées

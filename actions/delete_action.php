@@ -4,16 +4,16 @@ require_once('../config/db.php');
 require_once('../includes/csrf.php');
 require_once('../includes/messages.php');
 
-// Vérifier si c'est un formateur
-if ($_SESSION['role'] !== 'FORMATEUR') {
-    header('Location: ../index.php');
-    exit;
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
 
     if ($action === 'supprimer_travail') {
+        // Vérifier si c'est un formateur
+        if ($_SESSION['role'] !== 'FORMATEUR') {
+            header('Location: ../index.php');
+            exit;
+        }
+
         // Vérifier le token CSRF
         if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
             setError('Token CSRF invalide.');
@@ -124,10 +124,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 }
-session_start();
-require_once('../config/db.php');
-require_once('../includes/csrf.php');
-require_once('../includes/messages.php');
 
 /**
  * SUPPRESSION DES ENTITÉS
@@ -169,20 +165,53 @@ try {
         $redirect = "../views/promotions.php";
         
     } elseif ($type == 'etudiant') {
+        // Vérifier les permissions (seul DIRECTEUR ou ADMIN peut supprimer un étudiant)
+        if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['DIRECTEUR', 'ADMIN'])) {
+            setError('Vous n\'avez pas les droits pour supprimer un étudiant.');
+            header('Location: ../index.php');
+            exit;
+        }
+
         // Récupérer id_utilisateur avant suppression
         $stmtUser = $pdo->prepare("SELECT id_utilisateur FROM etudiants WHERE id = ?");
         $stmtUser->execute([$id]);
         $userId = $stmtUser->fetchColumn();
-        
+
         // Supprimer relations dans etudiant_espace
         $stmtRel = $pdo->prepare("DELETE FROM etudiant_espace WHERE id_etudiant = ?");
         $stmtRel->execute([$id]);
-        
+
+        // Supprimer les évaluations liées aux rendus de cet étudiant
+        $stmtEval = $pdo->prepare("
+            DELETE ev FROM evaluations ev
+            JOIN rendus_travaux rt ON ev.id_rendu = rt.id
+            JOIN assignations_travaux at ON rt.id_assignation = at.id
+            WHERE at.id_etudiant = ?
+        ");
+        $stmtEval->execute([$id]);
+
+        // Supprimer les rendus de cet étudiant
+        $stmtRendus = $pdo->prepare("
+            DELETE rt FROM rendus_travaux rt
+            JOIN assignations_travaux at ON rt.id_assignation = at.id
+            WHERE at.id_etudiant = ?
+        ");
+        $stmtRendus->execute([$id]);
+
+        // Supprimer les assignations de cet étudiant
+        $stmtAssign = $pdo->prepare("DELETE FROM assignations_travaux WHERE id_etudiant = ?");
+        $stmtAssign->execute([$id]);
+
+        // Pour les travaux individuels assignés à cet étudiant, les mettre à NULL
+        // (au lieu de supprimer le travail complètement)
+        $stmtTravauxIndividuels = $pdo->prepare("UPDATE travaux SET id_etudiant = NULL WHERE id_etudiant = ? AND type_travail = 'INDIVIDUEL'");
+        $stmtTravauxIndividuels->execute([$id]);
+
         // Supprimer l'étudiant
         $sql = "DELETE FROM etudiants WHERE id = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$id]);
-        
+
         // Supprimer de utilisateur
         if ($userId) {
             $stmtDelUser = $pdo->prepare("DELETE FROM utilisateur WHERE id = ?");

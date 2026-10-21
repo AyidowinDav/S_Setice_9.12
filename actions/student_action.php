@@ -118,7 +118,7 @@ try {
     $stmtStudent->execute([$nom, $prenom, $email, $id_promotion, $id_utilisateur]);
     $id_etudiant = $pdo->lastInsertId();
 
-    // Vérifier si la promotion est assignée à exactement un espace
+    // Vérifier si la promotion est assignée à des espaces
     $checkSpaces = $pdo->prepare("
         SELECT id_espace
         FROM promotion_espace
@@ -127,18 +127,16 @@ try {
     $checkSpaces->execute([$id_promotion]);
     $assignedSpaces = $checkSpaces->fetchAll(PDO::FETCH_COLUMN);
 
-    // Si la promotion est assignée à exactement un espace, ajouter automatiquement l'étudiant à cet espace
-    if (count($assignedSpaces) === 1) {
-        $id_espace = $assignedSpaces[0];
-
+    // Ajouter automatiquement l'étudiant à tous les espaces associés à sa promotion
+    foreach ($assignedSpaces as $id_espace) {
         // Vérifier que l'étudiant n'est pas déjà dans cet espace
         $checkExisting = $pdo->prepare("
-            SELECT id FROM etudiant_espace
+            SELECT COUNT(*) FROM etudiant_espace
             WHERE id_etudiant = ? AND id_espace = ?
         ");
         $checkExisting->execute([$id_etudiant, $id_espace]);
 
-        if ($checkExisting->rowCount() === 0) {
+        if ($checkExisting->fetchColumn() === 0) {
             // Ajouter l'étudiant à l'espace
             $stmtAssign = $pdo->prepare("
                 INSERT INTO etudiant_espace (id_etudiant, id_espace)
